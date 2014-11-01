@@ -1,0 +1,183 @@
+<%@page contentType="text/html" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>P2P Bridge Tester</title>
+        <link href="css/bootstrap.min.css" rel="stylesheet">
+        <link href="css/main.css" rel="stylesheet">
+        <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+          <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+          <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+        <![endif]-->
+    </head>
+    <body>
+        <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed"
+                            data-toggle="collapse" data-target="#navbar" aria-expanded="false"
+                            aria-controls="navbar">
+                        <span class="sr-only">Toggle navigation</span> <span
+                            class="icon-bar"></span> <span class="icon-bar"></span> <span
+                            class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="#">P2P Bridge Tester</a>
+                </div>
+                <div id="navbar" class="collapse navbar-collapse">
+                    <ul class="nav navbar-nav">
+                        <li class="active"><a href="#">Home</a></li>
+                    </ul>
+                </div>
+                <!--/.nav-collapse -->
+            </div>
+        </nav>
+        <div class="container">
+            <form id="idForm" role="form">
+                <div class="row">
+                    <div class="col-lg-6 form-group">
+                        <label for="device">Device</label>
+                        <select onchange="print_state('model', this.selectedIndex);" class="form-control" id="device" name="device" required>
+                        </select>
+                    </div>
+                    <div class="col-lg-6 form-group">
+                        <label for="model">Model</label>
+                        <select class="form-control" id="model" name="model" required></select>
+                    </div>
+                </div>    
+                <div class="form-group">
+                    <label for="ip_address">IP address</label> 
+                    <input type="text" class="form-control" id="ip_address" name="ip_address" required pattern="((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$"
+                           placeholder="IP address">
+                </div>
+                <div class="form-group">
+                    <label for="username">Username</label> 
+                    <input type="text" class="form-control" id="username" name="username"
+                           placeholder="Username">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label> <input
+                        type="password" class="form-control" id="password" name="password"
+                        placeholder="Password">
+                </div>                    
+                <div class="form-group">
+                    <label for="dial_number">Dial number</label> 
+                    <input type="text" class="form-control" id="dial_number" name="dial_number"
+                           placeholder="Dial Number">
+                    <label id="dial_number_error" class="error" for="dial_number">Dial number is required.</label>
+                </div>
+                <div class="pull-right">
+                    <button type="submit" id="get-status" class="btn btn-primary">Get Call Status</button>&nbsp;
+                    <button type="submit" id="launch-call" class="btn btn-primary">Launch Call</button>&nbsp;
+                    <button type="submit" id="hangup-call" class="btn btn-primary">Call Hangup</button>&nbsp;
+                    <button type="reset" class="btn btn-primary">Reset</button>&nbsp;
+                </div>
+            </form>
+        </div>
+        <hr/>
+        <div class="container">
+            <h3>Result</h3>
+            <div style="height: 200px; border: 1px solid #000" class="row">
+                <div class="center-block">
+                    <div id="result"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="loading">
+            <img src="images/loading.gif" alt="loader" class="ajax-loader"/>
+        </div>
+        <!-- /.container -->
+
+        <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+        <script  src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+        <script src="http://ajax.aspnetcdn.com/ajax/jquery.validate/1.13.0/jquery.validate.min.js"></script>
+
+        <!-- Include all compiled plugins (below), or include individual files as needed -->
+        <script src="js/bootstrap.min.js"></script>
+        <script src="js/device_model.js"></script>
+        <script>
+
+                            $(document).ready(function() {
+                                $("#loading").hide();
+                                $("#dial_number_error").hide();
+                                $.validator.addMethod('validIP', function(value) {
+                                    var split = value.split('.');
+                                    if (split.length != 4)
+                                        return false;
+
+                                    for (var i = 0; i < split.length; i++) {
+                                        var s = split[i];
+                                        if (s.length == 0 || isNaN(s) || s < 0 || s > 255)
+                                            return false;
+                                    }
+                                    return true;
+                                }, ' Invalid IP Address');
+                                $("#idForm").validate({
+                                    rules: {
+                                        ip_address: {
+                                            required: true,
+                                            validIP: true
+                                        }
+                                    }
+                                });
+
+                                $("#idForm").submit(function() {
+                                    return false;
+                                });
+                                $("#get-status, #launch-call, #hangup-call").click(function(event) {
+
+                                    var url = "StatusServlet"; // the script where you handle the form input.
+                                    var click_but = $(this).attr("id");
+
+                                    var output = "<ul>";
+                                    console.log(click_but);
+                                    if ($("#idForm").valid()) {
+                                        if (click_but === "launch-call") {
+                                            url = "LaunchCallServlet"
+                                            if ($("#dial_number").val() == "") {
+                                                $("#dial_number_error").show();
+                                                return false;
+                                            }                                            
+                                        }
+                                        if (click_but === "hangup-call") {
+                                            url = "HangupCallServlet"
+                                        }
+
+                                        $.ajax({
+                                            type: "POST",
+                                            dataType: 'json',
+                                            url: url,
+                                            data: $("#idForm").serialize(), // serializes the form's elements.
+                                            success: function(data)
+                                            {
+                                                console.log("Success");
+                                                var result = $('').appendTo();
+                                                $.each(data, function(index, item) {
+                                                    output += "<li><b>" + index + "</b> : " + item + "</li>";
+                                                });
+                                                output += "</ul>";
+                                                $('#result').html(output);
+                                            }
+                                        });
+                                    }
+                                    return false; // avoid to execute the actual submit of the form.
+                                });
+                            });
+                            $.ajaxSetup({
+                                beforeSend: function() {
+                                    // show gif here, eg:
+                                    $("#loading").show();
+                                },
+                                complete: function() {
+                                    // hide gif here, eg:
+                                    $("#loading").hide();
+                                }
+                            });
+                            print_country("device");
+        </script>
+    </body>
+</html>
